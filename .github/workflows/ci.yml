@@ -31,4 +31,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck -x firmware/*.sh web-flasher/*.sh
+      - run: shellcheck -x firmware/*.sh web-flasher/*.sh simulator/linux-gadget/*.sh
+
+  # The emulator against the real firmware: fetch the pinned SDK so the test
+  # suite compiles the firmware's dither_color() and compares it with the
+  # Python port, and check the Linux gadget patch still applies and passes the
+  # SDK's own tests.
+  simulator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: firmware/fetch-sdk.sh
+      - run: pip install -e './briefing[test]'
+      - run: pytest -q briefing/tests/test_emulator.py
+      - run: simulator/linux-gadget/prepare.sh
+      - name: Linux SDK tests on the patched gadget
+        working-directory: simulator/linux-gadget/.build/linux
+        run: |
+          pip install -e '.[test]'
+          python -m pytest -q tests

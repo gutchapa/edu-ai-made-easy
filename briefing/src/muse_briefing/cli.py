@@ -51,6 +51,20 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("-c", "--config", default="briefing.toml")
     s.add_argument("--port", type=int)
 
+    sim = sub.add_parser("simulate", help="show what a reTerminal E1002 would display for an image URL or file")
+    sim.add_argument("source", help="http(s) URL (e.g. the server's /briefing.rgb565) or a local .rgb565/.jpg file")
+    sim.add_argument("--out", type=Path, default=Path("panel.png"))
+    sim.add_argument("--row", type=int, default=0)
+    sim.add_argument("--fixed", action="store_true",
+                     help="preview firmware with the colour byte order corrected (see docs/simulator.md)")
+
+    em = sub.add_parser("emulate", help="run a virtual reTerminal E1002 with a live browser view")
+    em.add_argument("--host", default="127.0.0.1")
+    em.add_argument("--port", type=int, default=8766)
+    em.add_argument("--fixed", action="store_true", help="as for simulate")
+    em.add_argument("--refresh-seconds", type=float, default=0.0,
+                    help="pause like the real panel's refresh (about 30)")
+
     x = sub.add_parser("decode", help="turn a .rgb565 file back into a PNG, to check it")
     x.add_argument("rgb565", type=Path)
     x.add_argument("png", type=Path)
@@ -75,6 +89,22 @@ def main(argv: list[str] | None = None) -> int:
             cfg.port = a.port
         print(f"Device URL for display.draw_url: http://{_lan_ip()}:{cfg.port}/briefing.rgb565")
         serve(cfg)
+    elif a.cmd == "simulate":
+        from .emulator.device import VirtualReTerminal, load_source
+        dev = VirtualReTerminal(fixed=a.fixed)
+        data = load_source(a.source)
+        result = dev.draw_bytes(data, a.row) if data is not None else dev.run(
+            "display.draw_url", {"url": a.source, "row": a.row})
+        dev.panel.shown.save(a.out)
+        print(json.dumps(result))
+        print(f"wrote {a.out} ({'fixed byte order' if a.fixed else 'firmware as written'})")
+        return 0 if result["ok"] else 1
+    elif a.cmd == "emulate":
+        from .emulator.device import VirtualReTerminal
+        from .emulator.server import serve as serve_device
+        print(f"Virtual reTerminal: http://{a.host}:{a.port}/  "
+              f"({'fixed byte order' if a.fixed else 'firmware as written'})")
+        serve_device(VirtualReTerminal(fixed=a.fixed, refresh_seconds=a.refresh_seconds), a.host, a.port)
     elif a.cmd == "decode":
         data = a.rgb565.read_bytes()
         if len(data) != WIDTH * HEIGHT * 2:

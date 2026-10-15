@@ -138,6 +138,15 @@ the device URL from step 5. Then say:
 > Every morning at 7 am, generate our family briefing (calendar, top to-dos, weather) and
 > show it on the living-room display.
 
+## Testing without the hardware
+
+No reTerminal yet? `muse-briefing simulate` shows what the panel would display for any image
+or URL. `muse-briefing emulate` runs a virtual reTerminal with a live browser view. A patched
+Linux gadget lets a **real Muse** drive that virtual panel end to end. All three use the
+firmware's own image and dither logic, cross-checked against the compiled C. See
+**[docs/simulator.md](docs/simulator.md)**, including the colour byte-order bug in the
+pinned firmware that the simulator found.
+
 ## `muse-briefing` commands
 
 | Command | What it does |
@@ -146,6 +155,8 @@ the device URL from step 5. Then say:
 | `muse-briefing render -c briefing.toml --out out` | Collect from your sources and write `briefing.png` + `briefing.rgb565`. |
 | `muse-briefing render --json today.json --out out` | Render a briefing JSON (the same shape Muse posts). |
 | `muse-briefing serve -c briefing.toml` | Run the HTTP server. |
+| `muse-briefing simulate out/briefing.rgb565 --out panel.png [--fixed]` | What the reTerminal would show for an image file or URL. |
+| `muse-briefing emulate [--fixed]` | Virtual reTerminal with a live view at http://127.0.0.1:8766/. |
 | `muse-briefing decode out/briefing.rgb565 check.png` | Turn raw RGB565 back into a PNG, to inspect what the device receives. |
 
 ### HTTP API

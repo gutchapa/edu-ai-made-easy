@@ -1,0 +1,19 @@
+diff --git a/esp32/main/epaper_status.c b/esp32/main/epaper_status.c
+index b0207e5..f7514f8 100644
+--- a/esp32/main/epaper_status.c
++++ b/esp32/main/epaper_status.c
+@@ -414,8 +414,12 @@ bool led_status_draw_rect(int x, int y, int w, int h, const uint16_t *pixels) {
+     for (int r = 0; r < h; r++) {
+         uint8_t *line = s_canvas + ((size_t)(y + r) * EPD_W + x) * pixel_bytes;
+         if (EPD_COLOR) {
+-            memcpy(line, src, w * 2);
+-            src += w * 2;
++            // The canvas holds native RGB565 (dither_color() and the status
++            // screen read and write it so); `pixels` arrive high byte first.
++            uint16_t *dst = (uint16_t *)line;
++            for (int i = 0; i < w; i++, src += 2) {
++                dst[i] = (uint16_t)(src[0] << 8 | src[1]);
++            }
+         } else {
+             for (int i = 0; i < w; i++, src += 2) {
+                 line[i] = luma565((uint16_t)(src[0] << 8 | src[1]));
