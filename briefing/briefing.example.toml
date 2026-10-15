@@ -1,0 +1,31 @@
+# Copy to briefing.toml (git-ignored) and fill in. Every section is optional.
+
+[general]
+timezone = "Asia/Kolkata"           # IANA name; decides what "today" is
+title = "Good morning, Chapa family"
+
+[weather]                           # Open-Meteo, free, no API key
+latitude = 12.9716
+longitude = 77.5946
+units = "C"                         # C or F
+
+[calendar]
+# ICS feeds or local .ics files. For Google Calendar use Settings > your calendar >
+# "Secret address in iCal format". Treat that URL like a password.
+sources = [
+  # "https://calendar.google.com/calendar/ical/.../basic.ics",
+  # "~/family.ics",
+]
+max_events = 7
+
+[todos]
+file = "todo.md"                    # relative to this file; "- [ ] item" or one per line
+max = 5
+
+[server]
+host = "0.0.0.0"                    # all interfaces, so the reTerminal can reach it
+port = 8765
+# Required as "Authorization: Bearer <token>" on POST /briefing when set.
+# BRIEFING_PUSH_TOKEN in the environment overrides it.
+push_token = ""
+cache_minutes = 15

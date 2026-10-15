@@ -1,0 +1,24 @@
+# Secrets: never commit
+.sdk-token
+firmware/.sdk-token
+briefing/briefing.toml
+*.env
+.env
+
+# Fetched / generated
+firmware/.sdk/
+briefing/out/
+out/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp

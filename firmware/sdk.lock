@@ -1,0 +1,5 @@
+# Muse Gadget SDK revision this repo is tested against. Bump deliberately.
+SDK_REPO=https://github.com/facebookincubator/muse-gadget-sdk
+SDK_REF=0899976ef69606b2b8eb02ab9be896fad45301de
+IDF_VERSION=v6.0.1
+BOARD=reterminal-e1002

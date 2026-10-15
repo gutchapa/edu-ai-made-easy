@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "muse-briefing"
+version = "0.1.0"
+description = "Renders a family morning briefing for the reTerminal E1002 Muse gadget and serves it to the device."
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "Pillow>=10.1",
+  "icalendar>=5",
+  "recurring-ical-events>=2.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+muse-briefing = "muse_briefing.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
