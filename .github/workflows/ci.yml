@@ -31,4 +31,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck -x firmware/*.sh
+      - run: shellcheck -x firmware/*.sh web-flasher/*.sh

@@ -1,0 +1,64 @@
+name: web-flasher
+
+# Builds tokenless reTerminal E1002 firmware from the SDK pinned in
+# firmware/sdk.lock and publishes the flasher page to GitHub Pages.
+# PRs build and assemble it; pushes to main deploy it.
+
+on:
+  push:
+    branches: [main]
+    paths: [firmware/**, web-flasher/**, .github/workflows/web-flasher.yml]
+  pull_request:
+    paths: [firmware/**, web-flasher/**, .github/workflows/web-flasher.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-flasher-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.0.1
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch SDK
+        run: |
+          git config --global --add safe.directory '*'
+          firmware/fetch-sdk.sh
+
+      # No token: the page sends the maker's own over serial after flashing.
+      - name: Build firmware
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          firmware/.sdk/esp32/tools/board.sh reterminal-e1002 build
+
+      - name: Assemble site
+        run: web-flasher/assemble.sh "$GITHUB_WORKSPACE/site"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

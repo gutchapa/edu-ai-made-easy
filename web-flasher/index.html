@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<!--
+Web flasher for the reTerminal E1002 morning-briefing gadget.
+Flashing, the flash-size guard, paced serial and sending the SDK token reuse
+the Muse Gadget SDK's web flasher modules (Apache-2.0, Meta Platforms), which
+CI copies into sdk/ from the pinned SDK revision.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>reTerminal Briefing Flasher</title>
+  <!-- Pinned: sdk/flasher-hooks.js relies on how this version works. -->
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --bg: #f4f5f7; --card: #fff; --text: #1b1d21; --muted: #5f6670; --line: #dfe2e7;
+      --accent: #1f5fe0; --accent-text: #fff; --ok: #17803a; --error: #c3242c;
+      --warn-bg: #fff6e3; --warn-line: #e39b12;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #121315; --card: #1c1e22; --text: #e8eaed; --muted: #9ba1a9; --line: #32353b;
+        --accent: #6c9bff; --accent-text: #0a0f1e; --ok: #4fc46e; --error: #ff6b6b;
+        --warn-bg: #2d2410; --warn-line: #c98a1a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 2.5rem 16px; background: var(--bg); color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 40rem; margin: 0 auto; }
+    h1 { font-size: 1.7rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+    .lede { color: var(--muted); margin: 0 0 1.75rem; }
+    a { color: var(--accent); }
+    code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 1.2rem 1.4rem; margin-bottom: 1rem; transition: border-color .2s, opacity .2s;
+    }
+    .step.active { border-color: var(--accent); }
+    .step.waiting { opacity: .62; }
+    .step.waiting:hover, .step.waiting:focus-within { opacity: 1; }
+    .head { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .head h2 { font-size: 1.08rem; margin: 0; }
+    .badge {
+      flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center;
+      font-size: .9rem; font-weight: 650; background: var(--line);
+    }
+    .active .badge { background: var(--accent); color: var(--accent-text); }
+    .done .badge { background: var(--ok); color: #fff; }
+    .summary { margin-left: auto; display: flex; gap: .75rem; font-size: .9rem; }
+    .summary a { color: var(--muted); }
+    .body { margin-top: .9rem; }
+    .body p, .body ol { margin: 0 0 .75rem; }
+    .body ol { padding-left: 1.25rem; }
+    label.field { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; }
+    input[type="password"] {
+      width: 100%; font: .95rem ui-monospace, SFMono-Regular, Menlo, monospace; color: inherit;
+      background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: .6rem .75rem;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .button {
+      font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: .65rem 1.2rem; cursor: pointer;
+      background: var(--accent); color: var(--accent-text);
+    }
+    .button.secondary { background: var(--line); color: var(--text); }
+    .button:disabled { opacity: .5; cursor: default; }
+    .note { color: var(--muted); font-size: .875rem; }
+    .warning {
+      background: var(--warn-bg); border-left: 3px solid var(--warn-line); border-radius: 6px;
+      padding: .6rem .8rem; font-size: .9rem; margin: .75rem 0 0;
+    }
+    .status { margin: .75rem 0 0; font-size: .9rem; }
+    .status:empty, [hidden] { display: none !important; }
+    .status.ok { color: var(--ok); }
+    .status.error { color: var(--error); }
+    .row { margin: 1rem 0 .75rem; }
+    /* Until ESP Web Tools loads, its fallback messages would show beside the button. */
+    esp-web-install-button:not(:defined) > [slot="unsupported"],
+    esp-web-install-button:not(:defined) > [slot="not-allowed"] { display: none; }
+    details.card summary { cursor: pointer; font-weight: 600; }
+    details.card[open] summary { margin-bottom: .75rem; }
+    footer { text-align: center; margin-top: 1.75rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>reTerminal E1002 Briefing Flasher</h1>
+  <p class="lede">
+    Put the Muse Gadget firmware on a Seeed reTerminal E1002 from Chrome or Edge on a desktop
+    computer, so Muse can show your family's morning briefing on it.
+  </p>
+
+  <section class="card step" id="step-token">
+    <div class="head">
+      <span class="badge" id="token-badge">1</span>
+      <h2>Your SDK token</h2>
+      <span class="summary" id="token-saved" hidden>
+        <code id="token-hint"></code>
+        <a href="#" id="change-token">Change</a>
+        <a href="#" id="forget-token">Forget</a>
+      </span>
+    </div>
+    <div class="body" id="token-entry">
+      <p>
+        Every gadget needs one to pair. Create it at
+        <a href="https://gadgets.muse.ai/settings/sdk-tokens" target="_blank" rel="noopener">gadgets.muse.ai</a>
+        and read the <a href="https://gadgets.muse.ai/sdk-terms" target="_blank" rel="noopener">SDK terms</a>.
+        It never goes into the firmware file. After installing, this page sends it to the
+        device over USB, the device keeps it through updates, and this browser remembers it
+        on this computer only.
+      </p>
+      <label class="field" for="token">SDK token</label>
+      <input id="token" type="password" placeholder="mgst_…" autocomplete="off" spellcheck="false">
+      <p id="token-check" class="status"></p>
+    </div>
+  </section>
+
+  <section class="card step" id="step-install">
+    <div class="head">
+      <span class="badge">2</span>
+      <h2>Install</h2>
+    </div>
+    <div class="body">
+      <ol>
+        <li>Plug the reTerminal into this computer with a USB-C <strong>data</strong> cable and switch it on.</li>
+        <li>Click <strong>Connect &amp; install</strong> and pick its port. It usually shows up as a
+          <code>USB Serial</code>, <code>CH340</code> or <code>wchusbserial</code> device.</li>
+        <li>First install: accept <strong>Erase device</strong>. Flashing takes a couple of minutes.</li>
+      </ol>
+      <p id="token-warning" class="warning" hidden>
+        You haven't entered your SDK token yet. You can install without it, but the
+        reTerminal can't pair until it has one.
+      </p>
+      <div class="row">
+        <esp-web-install-button id="install" manifest="firmware/reterminal-e1002/manifest.json">
+          <button slot="activate" class="button">Connect &amp; install</button>
+          <span slot="unsupported">This browser has no Web Serial. Use Chrome or Edge on a desktop computer.</span>
+          <span slot="not-allowed">Web Serial needs https (or localhost).</span>
+        </esp-web-install-button>
+      </div>
+      <p class="note">
+        Keep this tab in front while installing. When it's done, close the installer
+        dialog: the page then sends your token.
+      </p>
+      <p class="warning">
+        Can't connect? Hold <strong>BOOT</strong>, tap <strong>RESET</strong>, release
+        <strong>BOOT</strong>, then try again. No port listed? The cable is probably
+        charge-only. On Windows, install the
+        <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html" target="_blank" rel="noopener">WCH CH34x driver</a>.
+      </p>
+      <p id="install-status" class="status"></p>
+    </div>
+  </section>
+
+  <section class="card step waiting" id="step-pair">
+    <div class="head">
+      <span class="badge">3</span>
+      <h2>Pair with Muse</h2>
+    </div>
+    <div class="body">
+      <ol>
+        <li>Muse app → <strong>Settings → Devices</strong> → turn on <strong>Developer mode</strong>.</li>
+        <li>Pick <code>MuseGadget-Disp-XXXXXX</code> and pair. Press the <strong>green button</strong>
+          on top of the reTerminal when asked to confirm.</li>
+        <li>Set up the briefing server and Muse skill:
+          <a id="repo-link" href="https://github.com/gutchapa/edu-ai-made-easy#5-run-the-briefing-server">setup guide, step 5</a>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <details class="card" id="already">
+    <summary>Already installed? Send your token again</summary>
+    <p class="note">For a reTerminal running firmware from this page. Pick its port when asked.</p>
+    <button id="send-token" class="button secondary">Send token to the reTerminal</button>
+    <p id="token-status" class="status"></p>
+  </details>
+
+  <footer class="note">
+    <span id="build-info">Muse Gadget SDK</span> ·
+    <a href="https://github.com/gutchapa/edu-ai-made-easy">edu-ai-made-easy</a>
+  </footer>
+</main>
+
+<script type="module">
+  import { installFlasherHooks } from "./sdk/flasher-hooks.js";
+  import { installPacedSerial } from "./sdk/paced-serial.js";
+  import { isSdkToken, sendSdkToken } from "./sdk/sdk-token.js";
+
+  const $ = (id) => document.getElementById(id);
+  const MANIFEST = "firmware/reterminal-e1002/manifest.json";
+  const pacing = "SerialPort" in window ? installPacedSerial(SerialPort) : null;
+  const show = (el, text, kind = "") => { el.textContent = text; el.className = `status ${kind}`; };
+
+  const [manifest, build] = await Promise.all([
+    fetch(MANIFEST).then((r) => r.json()).catch(() => null),
+    fetch("build.json").then((r) => r.json()).catch(() => null),
+  ]);
+  const minFlashBytes = manifest?.min_flash_bytes ?? 0;
+  if (!manifest) show($("install-status"), "No firmware on this site yet. Check the repo's web-flasher workflow run.", "error");
+
+  // Token, remembered in this browser only. localStorage can be unavailable
+  // (private windows, blocked site data); then it lasts for this visit.
+  const KEY = "muse-sdk-token";
+  const store = {
+    get: () => { try { return localStorage.getItem(KEY); } catch { return null; } },
+    set: (v) => { try { localStorage.setItem(KEY, v); } catch {} },
+    del: () => { try { localStorage.removeItem(KEY); } catch {} },
+  };
+  let saved = store.get();
+  if (!isSdkToken(saved ?? "")) saved = null;
+
+  const render = (entering = false) => {
+    const done = Boolean(saved) && !entering;
+    $("step-token").className = `card step ${done ? "done" : "active"}`;
+    $("step-install").className = `card step ${done ? "active" : "waiting"}`;
+    $("token-badge").textContent = done ? "✓" : "1";
+    $("token-saved").hidden = !done;
+    $("token-entry").hidden = done;
+    $("token-hint").textContent = saved ? `${saved.slice(0, 12)}…` : "";
+    $("token-warning").hidden = Boolean(saved);
+  };
+  $("token").addEventListener("input", () => {
+    const v = $("token").value.trim();
+    if (isSdkToken(v)) {
+      saved = v;
+      store.set(v);
+      $("token").value = "";
+      show($("token-check"), "");
+      render();
+    } else {
+      show($("token-check"), v ? "That isn't an SDK token. Copy it again from gadgets.muse.ai." : "", "error");
+    }
+  });
+  $("token").addEventListener("blur", () => { if (!$("token").value.trim()) render(); });
+  $("change-token").addEventListener("click", (e) => { e.preventDefault(); render(true); $("token").focus(); });
+  $("forget-token").addEventListener("click", (e) => {
+    e.preventDefault(); saved = null; store.del(); render(); $("token").focus();
+  });
+  render();
+
+  const send = async (port, el) => {
+    show(el, "Sending your SDK token to the reTerminal…");
+    try {
+      await sendSdkToken(port, saved);
+      show(el, "Done. The reTerminal restarts with your token. Now pair it in the Muse app.", "ok");
+      $("step-install").className = "card step done";
+      $("step-pair").className = "card step active";
+    } catch (e) {
+      show(el, e.message, "error");
+    }
+  };
+
+  // After a write, closing the installer sends the token over the same port.
+  let installedPort = null;
+  if (pacing) {
+    installFlasherHooks({
+      getSelection: () => ({ usb: null, minFlashBytes }),
+      onInstalled: (port) => (installedPort = port),
+    });
+  }
+  document.addEventListener("closed", async (e) => {
+    if (e.target.localName !== "ewt-install-dialog" || !installedPort) return;
+    const port = installedPort;
+    installedPort = null;
+    if (!saved) {
+      show($("install-status"), "Installed. Enter your SDK token in step 1, then use “Send your token again”.", "error");
+      return;
+    }
+    for (let i = 0; i < 20 && (port.readable || port.writable); i++) {
+      await new Promise((r) => setTimeout(r, 100));   // the installer closes the port as it goes
+    }
+    await send(port, $("install-status"));
+  });
+
+  $("send-token").disabled = !pacing;
+  $("send-token").addEventListener("click", async () => {
+    if (!saved) { show($("token-status"), "Enter your SDK token in step 1 first.", "error"); return; }
+    let port;
+    try { port = await navigator.serial.requestPort(); } catch { return; }
+    await send(port, $("token-status"));
+  });
+
+  if (build) {
+    const sdk = build.sdk_ref ? `<a href="https://github.com/facebookincubator/muse-gadget-sdk/commit/${build.sdk_ref}">SDK ${build.sdk_ref.slice(0, 7)}</a>` : "Muse Gadget SDK";
+    const fw = manifest?.version ? ` · firmware ${manifest.version}` : "";
+    $("build-info").innerHTML = sdk + fw;
+  }
+</script>
+</body>
+</html>

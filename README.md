@@ -29,6 +29,7 @@ battery.
 - **`briefing/`** (`muse-briefing`) renders the briefing and serves it to the device. Muse
   can push the data. Without a push, the server collects it from your ICS calendars, a
   to-do file and Open-Meteo.
+- **`web-flasher/`** is a page for flashing the E1002 from Chrome, published to GitHub Pages.
 - **`muse/SKILL.md`** is the skill you paste into Muse so it knows how and when to update
   the display.
 
@@ -42,6 +43,8 @@ shows the picture pixel for pixel. A test (`briefing/tests/test_render.py`) runs
 firmware's own `nearest_ink()` logic to prove it.
 
 ## What you need
+
+Full shopping list with prices and options: **[docs/shopping-list.md](docs/shopping-list.md)**.
 
 | | |
 |---|---|
@@ -60,6 +63,28 @@ Create one at <https://gadgets.muse.ai/settings/sdk-tokens> (it starts with `mgs
 read the [Gadget SDK Terms](https://gadgets.muse.ai/sdk-terms). Tokens are personal and
 non-commercial, cover at most 50 devices, and a device holding one must not be sold or
 publicly listed.
+
+### 2–3. Flash from Chrome: the easy way
+
+Open the **web flasher**: <https://gutchapa.github.io/edu-ai-made-easy/> (Chrome or Edge on
+a desktop computer).
+
+1. Paste your SDK token. It stays in your browser and is sent to the device over USB after
+   flashing. It is never part of the firmware file.
+2. Plug in the reTerminal, click **Connect & install**, pick its port, and accept
+   **Erase device** on the first install.
+3. Close the installer when it's done. The page sends the token, and the reTerminal restarts
+   ready to pair.
+
+The page is built by `.github/workflows/web-flasher.yml`: tokenless firmware from the SDK
+revision pinned in `firmware/sdk.lock`, compiled in the official `espressif/idf:v6.0.1`
+container and deployed to GitHub Pages. Updates from the page keep the device's pairing,
+Wi-Fi and token. To run it locally, download the `github-pages` artifact from a workflow
+run, unpack it and serve it on `localhost` (Web Serial allows localhost without https).
+
+**One-time repo setup:** GitHub → *Settings → Pages → Build and deployment → Source: GitHub Actions*, then re-run the `web-flasher` workflow. Until then the build runs but the deploy step fails.
+
+Or build and flash it yourself, as below.
 
 ### 2. Build the firmware
 
@@ -81,9 +106,6 @@ firmware/flash.sh              # auto-detects the port; or: firmware/flash.sh /d
 If it can't connect: **hold BOOT, tap RESET, release BOOT**, and run it again. On Linux,
 add yourself to `dialout` (Debian/Ubuntu) or `uucp` (Arch) if the port is
 permission-denied.
-
-No toolchain? The SDK's `web-flasher/` can flash a prebuilt image from Chrome and sets the
-token over serial.
 
 ### 4. Pair
 
